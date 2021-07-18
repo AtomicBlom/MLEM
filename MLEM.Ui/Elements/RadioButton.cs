@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using MLEM.Ui.Style;
 
@@ -6,13 +7,16 @@ namespace MLEM.Ui.Elements {
     /// A radio button element to use inside of a <see cref="UiSystem"/>.
     /// A radio button is a variation of a <see cref="Checkbox"/> that causes all other radio buttons in the same <see cref="Group"/> to be deselected upon selection.
     /// </summary>
-    public class RadioButton : Checkbox {
+    public class RadioButton : Checkbox
+    {
+
+        private static Dictionary<string, List<RadioButton>> Groups = new Dictionary<string, List<RadioButton>>();
 
         /// <summary>
         /// The group that this radio button has.
         /// All other radio buttons in the same <see cref="RootElement"/> that have the same group will be deselected when this radio button is selected.
         /// </summary>
-        public string Group;
+        public readonly string Group;
 
         /// <summary>
         /// Creates a new radio button with the given settings
@@ -25,13 +29,29 @@ namespace MLEM.Ui.Elements {
         public RadioButton(Anchor anchor, Vector2 size, string label, bool defaultChecked = false, string group = "") :
             base(anchor, size, label, defaultChecked) {
             this.Group = group;
+            if (!Groups.TryGetValue(group, out var radioButtonSet))
+            {
+                radioButtonSet = new List<RadioButton>();
+                Groups.Add(group, radioButtonSet);
+            }
 
+            radioButtonSet.Add(this);
+
+            this.OnDisposed += _ =>
+            {
+                radioButtonSet.Remove(this);
+            };
+            
             // don't += because we want to override the checking + unchecking behavior of Checkbox
             this.OnPressed = element => {
                 this.Checked = true;
-                foreach (var sib in this.GetSiblings()) {
-                    if (sib is RadioButton radio && radio.Group == this.Group)
-                        radio.Checked = false;
+
+                foreach (var radioButton in radioButtonSet)
+                {
+                    if (radioButton != this)
+                    {
+                        radioButton.Checked = false;
+                    }
                 }
             };
         }
